@@ -112,10 +112,104 @@ void HiResTexture::_bind_methods() {
 HiResTexture::HiResTexture() {
 	w = h = 0;
 	texture = RID_PRIME(VisualServer::get_singleton()->texture_create());
-	compressed = false;
 }
 
 HiResTexture::~HiResTexture() {
 	VisualServer::get_singleton()->free(texture);
 }
 
+DenseGradientTexture::DenseGradientTexture() {
+	width = 2048;
+	texture_reset = true;
+	texture = RID_PRIME(VS::get_singleton()->texture_create());
+	_update();
+}
+
+DenseGradientTexture::~DenseGradientTexture() {
+	VS::get_singleton()->free(texture);
+}
+
+void DenseGradientTexture::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_gradient", "gradient"), &DenseGradientTexture::set_gradient);
+	ClassDB::bind_method(D_METHOD("get_gradient"), &DenseGradientTexture::get_gradient);
+
+	ClassDB::bind_method(D_METHOD("set_width", "width"), &DenseGradientTexture::set_width);
+
+	ClassDB::bind_method(D_METHOD("_update"), &DenseGradientTexture::_update);
+
+	ClassDB::bind_method(D_METHOD("update_gradient_only", "gradient"), &DenseGradientTexture::update_gradient_only);
+
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "gradient", PROPERTY_HINT_RESOURCE_TYPE, "Gradient"), "set_gradient", "get_gradient");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "width", PROPERTY_HINT_RANGE, "16,8192"), "set_width", "get_width");
+}
+
+void DenseGradientTexture::set_gradient(Ref<Gradient> p_gradient) {
+	if (p_gradient == gradient) {
+		return;
+	}
+	if (gradient.is_valid()) {
+		gradient->disconnect(CoreStringNames::get_singleton()->changed, this, "_update");
+	}
+	gradient = p_gradient;
+	if (gradient.is_valid()) {
+		gradient->connect(CoreStringNames::get_singleton()->changed, this, "_update");
+	}
+	_update();
+	emit_changed();
+}
+
+Ref<Gradient> DenseGradientTexture::get_gradient() const {
+	return gradient;
+}
+
+void DenseGradientTexture::_update() {
+	if (gradient.is_null()) {
+		return;
+	}
+
+	Ref<Image> image;
+
+	if (texture_reset) {
+		image.instance();
+		image->create(width, 1, false, Image::FORMAT_RGBAF);
+	} else {
+		image = get_data();
+	}
+
+	Gradient &g = **gradient;
+	image->lock();
+	for (int x = 0; x < width; x++) {
+		float ofs = float(x) / (width - 1);
+		image->set_pixel(x, 0, g.get_color_at_offset(ofs));
+	}
+	image->unlock();
+
+	if (texture_reset) {
+		VS::get_singleton()->texture_allocate(texture, width, 1, 0, image->get_format(), VS::TEXTURE_TYPE_2D, VS::TEXTURE_FLAG_FILTER);
+	}
+	VS::get_singleton()->texture_set_data(texture, image);
+	texture_reset = false;
+	emit_changed();
+}
+
+void DenseGradientTexture::update_gradient_only(Ref<Gradient> p_gradient) {
+	texture_reset = false;
+	set_gradient(p_gradient);
+}
+
+void DenseGradientTexture::set_width(int p_width) {
+	texture_reset = true;
+	if(p_width == width) {
+		return;
+	}
+	width = p_width;
+	_update();
+	emit_changed();
+}
+int DenseGradientTexture::get_width() const {
+	return width;
+}
+
+Ref<Image> DenseGradientTexture::get_data() const {
+	return VisualServer::get_singleton()->texture_get_data(texture);
+}

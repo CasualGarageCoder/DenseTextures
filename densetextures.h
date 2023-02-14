@@ -3,6 +3,8 @@
 
 #include "scene/resources/texture.h"
 
+#include "core/core_string_names.h"
+
 class HiResTexture : public Texture {
 	GDCLASS(HiResTexture, Texture);
 
@@ -11,7 +13,6 @@ class HiResTexture : public Texture {
 	private:
 	RID texture;
 	int w, h;
-	bool compressed;
 
 	protected:
 
@@ -43,6 +44,51 @@ class HiResTexture : public Texture {
 
 	HiResTexture();
 	~HiResTexture();
+};
+
+class DenseGradientTexture : public Texture {
+	GDCLASS(DenseGradientTexture, Texture);
+
+	public:
+	struct Point {
+		float offset;
+		Color color;
+		bool operator<(const Point &p_ponit) const {
+			return offset < p_ponit.offset;
+		}
+	};
+
+	private:
+	Ref<Gradient> gradient;
+	RID texture;
+	int width;
+	bool texture_reset;
+
+	void _update();
+
+	protected:
+	static void _bind_methods();
+
+	public:
+	void set_gradient(Ref<Gradient> p_gradient);
+	Ref<Gradient> get_gradient() const;
+
+	void update_gradient_only(Ref<Gradient> p_gradient);
+
+	void set_width(int p_width);
+	int get_width() const;
+
+	virtual RID get_rid() const { return texture; }
+	virtual int get_height() const { return 1; }
+	virtual bool has_alpha() const { return true; }
+
+	virtual void set_flags(uint32_t p_flags) {}
+	virtual uint32_t get_flags() const { return FLAG_FILTER; }
+
+	virtual Ref<Image> get_data() const;
+
+	DenseGradientTexture();
+	virtual ~DenseGradientTexture();
 };
 
 #endif // DENSE_TEXTURES_H
