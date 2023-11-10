@@ -107,6 +107,7 @@ void HiResTexture::_set_data(Dictionary p_data) {
 void HiResTexture::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create", "width", "height"), &HiResTexture::create);
 	ClassDB::bind_method(D_METHOD("set_data", "image"), &HiResTexture::set_data);
+	ClassDB::bind_method(D_METHOD("create_from_image", "image"), &HiResTexture::create_from_image);
 }
 
 HiResTexture::HiResTexture() {
